@@ -1,2 +1,3 @@
 # verificaDiTpcit
-se riesco a farlo lo trovate qui 
+se riesco a farlo lo trovate qui , metto solo la base
+
