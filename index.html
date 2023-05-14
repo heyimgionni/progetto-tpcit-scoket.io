@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Multiutente</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f1f1f1;
+        margin: 0;
+        padding: 0;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        padding: 20px 0;
+        margin: 0;
+      }
+
+      .container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+      }
+
+      #messages {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: scroll;
+        margin-bottom: 20px;
+      }
+
+      #messageInput {
+        width: 80%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px 0 0 5px;
+        outline: none;
+      }
+
+      #sendButton {
+        padding: 10px 20px;
+        background-color: #4caf50;
+        border: none;
+        color: #fff;
+        border-radius: 0 5px 5px 0;
+        cursor: pointer;
+        outline: none;
+      }
+
+      #clientSelect {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        outline: none;
+        width: 100%;
+      }
+
+      .message-container {
+        margin-bottom: 10px;
+      }
+
+      .message-container .message {
+        background-color: #f1f1f1;
+        padding: 10px;
+        border-radius: 5px;
+      }
+
+      .message-container .message.from-me {
+        background-color: #e1f5fe;
+      }
+
+      .message-container .message.from-me::before {
+        content: "Me: ";
+        font-weight: bold;
+      }
+
+      .message-container .message.from-others {
+        background-color: #e0e0e0;
+      }
+
+      .message-container .message.from-others::before {
+        content: "From: ";
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Chat Multiutente</h1>
+
+    <div>
+      <label for="clientSelect">Seleziona il client:</label>
+      <select id="clientSelect">
+        <option value="all">Invialo a tutti</option>
+      </select>
+    </div>
+
+    <div id="messages"></div>
+
+    <input
+      type="text"
+      id="messageInput"
+      placeholder="Inserisci il tuo messaggio"
+    />
+    <button id="sendButton">Invia</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <script>
+      var socket = io();
+
+      function appendMessage(message) {
+        var messagesDiv = document.getElementById("messages");
+        var messageElement = document.createElement("div");
+        messageElement.innerText = message;
+        messagesDiv.appendChild(messageElement);
+      }
+
+      function updateClientList(clients) {
+        var clientSelect = document.getElementById("clientSelect");
+        clientSelect.innerHTML = "";
+
+        var allOption = document.createElement("option");
+        allOption.value = "all";
+        allOption.text = "Invialo a tutti";
+        clientSelect.appendChild(allOption);
+
+        clients.forEach(function (clientId) {
+          var option = document.createElement("option");
+          option.value = clientId;
+          option.text = clientId;
+          clientSelect.appendChild(option);
+        });
+      }
+
+      document
+        .getElementById("sendButton")
+        .addEventListener("click", function () {
+          var messageInput = document.getElementById("messageInput");
+          var message = messageInput.value;
+          messageInput.value = "";
+
+          var selectedClient = document.getElementById("clientSelect").value;
+          if (selectedClient === "all") {
+            socket.emit("chat message", message); // Invia il messaggio a tutti i client connessi
+          } else {
+            socket.emit("private chat message", {
+              clientId: selectedClient,
+              message: message,
+            });
+          }
+        });
+
+      socket.on("connect", function () {
+        var clientId = socket.id;
+        var option = document.createElement("option");
+        option.value = clientId;
+        option.text = clientId + " (Me)";
+        document.getElementById("clientSelect").appendChild(option);
+        appendMessage("Connesso al server. ID: " + clientId);
+      });
+
+      socket.on("clients", function (clients) {
+        updateClientList(clients);
+      });
+
+      socket.on("chat message", function (message) {
+        appendMessage(message);
+      });
+
+      socket.on("private chat message", function (data) {
+        var message = "From " + data.from + ": " + data.message;
+        appendMessage(message);
+      });
+
+      socket.on("disconnect", function () {
+        var clientId = socket.id;
+        var clientOption = document.querySelector(
+          '#clientSelect option[value="' + clientId + '"]'
+        );
+        if (clientOption) {
+          clientOption.remove();
+        }
+        appendMessage("Disconnesso dal server. ID: " + clientId);
+      });
+    </script>
+  </body>
+</html>
